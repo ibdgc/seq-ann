@@ -42,7 +42,7 @@ vep \
   --variant_class \
   --mirna \
   --pick_allele
-  --plugin --plugin CADD,/path/to/plugin/data/CADD/GRCh38/whole_genome_SNVs.tsv.gz,/path/to/plugin/data/CADD/GRCh38/gnomad.genomes.r3.0.indel.tsv.gz
+  --plugin CADD,/path/to/plugin/data/CADD/GRCh38/whole_genome_SNVs.tsv.gz,/path/to/plugin/data/CADD/GRCh38/gnomad.genomes.r3.0.indel.tsv.gz
   #CADD plugin is required for the MSC annotation
 
 ###### Extract annotations ######
