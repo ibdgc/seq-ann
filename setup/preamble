@@ -13,7 +13,6 @@ eval "$(conda shell.bash hook)"
 
 # Declare an array of tools to install
 declare -a TOOLS=(
-"ensembl-vep=109.3"
 "picard"
 "bcftools"
 "pandas"
@@ -42,5 +41,19 @@ then
     conda deactivate
 fi
 
-# Setup VEP GRCh38 reference genome
-# vep_install -a cf -s homo_sapiens -y GRCh38
+##pull the vep docker image with singularity
+##Here singularity module on Minerva is loaded but singularity installation might be necessary for other users
+mkdir ../anno
+cd ../anno
+
+ml singularity/3.6.4
+singularity pull --name vep_109.sif docker://ensemblorg/ensembl-vep:release_109.3
+
+mkdir vep_data
+
+##The cache has already been downloaded on Minerva, so I skipped the next command, instead I copied the cache (homo_sapiens folder) and fasta file(s) to /local/ece/anno/vep_data
+#singularity exec vep.sif INSTALL.pl -c /local/ece/anno/vep_data -a cf -s homo_sapiens -y GRCh38
+
+##Create two folders for input and output files
+mkdir vep_data/input
+mkdir vep_data/output
