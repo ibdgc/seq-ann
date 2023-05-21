@@ -8,6 +8,7 @@ outfile = sys.argv[3]
 
 gdi_df = pd.read_csv("./GDI.csv")
 msc_df = pd.read_csv("./MSC_v1.6_95.txt", usecols=['Gene', 'MSC'], sep="\t")
+goflof_df = pd.read_csv("/sc/arion/scratch/karsm02/vep_plugin_resource/GOF_LOF/GoFLoF.tsv", sep="\t")
 
 # read all column names of the vcf output
 csqheader = pd.read_csv(headerfile, header=None, names=[
@@ -74,18 +75,34 @@ for chunk in pd.read_csv(
 
     chunk_gdi_msc['MSC_CADD_95CI'] = chunk_gdi_msc.apply(
         lambda x: compare(x.CADD_PHRED, x.MSC_95CI), axis=1)
+    
+    chunk_gdi_msc_goflof = pd.merge(
+        chunk_gdi_msc,
+        goflof_df,
+        how='left',
+        left_on='ID',
+        right_on='ID_goflof'
+    )
+    
+    chunk_gdi_msc_goflof.drop(
+        'ID_goflof',
+        axis=1,
+        inplace=True
+    )
 
     if not os.path.isfile("%s.tsv" % outfile):
-        chunk_gdi_msc.to_csv(
+        chunk_gdi_msc_goflof.to_csv(
             "%s.tsv" % outfile,
             sep="\t",
-            index=False
+            index=False,
+            na_rep='.'
         )
     else:
-        chunk_gdi_msc.to_csv(
+        chunk_gdi_msc_goflof.to_csv(
             "%s.tsv" % outfile,
             sep="\t",
             index=False,
             mode='a',
-            header=False
+            header=False,
+            na_rep='.'
         )
