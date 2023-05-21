@@ -4,7 +4,7 @@ eval "$(conda shell.bash hook)"
 conda activate seq-ann
 cd anno/vep_data/input
 
-##### commands for parallel prcoessing of chromosome-based files #####
+##### commands for parallel processing of chromosome-based files #####
 N=23
 open_sem(){
     mkfifo pipe-$$
@@ -58,6 +58,8 @@ cd ../../
 
 ###### VEP annotation ######
 ml singularity/3.6.4
+plugdir=/path/to/plugin/data
+
 vep_anno(){
   singularity exec -B ./vep_data:/opt/vep/.vep \
     vep_109.sif vep \
@@ -95,9 +97,13 @@ vep_anno(){
     --variant_class \
     --mirna \
     --pick_allele \
-    --plugin TSSDistance \
+    --fasta $plugdir/fasta/Homo_sapiens.GRCh38.dna.toplevel.fa.gz \
+    --plugin AncestralAllele,$plugdir/AncestralAllele/homo_sapiens_ancestor_GRCh38.fa.gz \
+    --plugin Conservation,$plugdir/Conservation/gerp_conservation_scores.homo_sapiens.GRCh38.bw \
+    --plugin DisGeNET,file=$plugdir/DisGeNET/all_variant_disease_pmid_associations_final.tsv.gz \
     --plugin NearestExonJB \
-    --plugin Conservation,/sc/arion/projects/Itan_lab/vep_data/Conservation/gerp_conservation_scores.homo_sapiens.GRCh38.bw
+    --plugin TSSDistance \
+    --plugin UTRAnnotator,file=$plugdir/UTRAnnotator/uORF_5UTR_GRCh38_PUBLIC.txt
 }
 
 open_sem $N
@@ -141,5 +147,138 @@ for i in ${all_chroms[@]}
 do
         run_with_lock extract_anno  $i
 done
+
+##### extensive annotation of coding regions #####
+
+### select variants from coding region using IMPACT ###
+
+for i in ${all_chroms[@]}
+do
+awk '!/MODIFIER/' vep_annotated$i\_IBD.tsv | cut -f 3 > $i\_coding_variant_IDs.txt
+bcftools view -i ID=@$i\_coding_variant_IDs.txt ../input/sorted$i\_IBD.vcf > ../input/coding_sorted$i\_IBD.vcf
+done
+
+rm chr*
+
+conda deactivate
+cd ../../
+
+##### vep annotation #####
+extensive_vep_anno(){
+        singularity exec -B ./vep_data:/opt/vep/.vep \
+        vep_109.sif vep \
+        --dir /opt/vep/.vep \
+        --cache \
+        --offline \
+        --format vcf \
+        --vcf \
+        --force_overwrite \
+        --fasta $plugdir/fasta/Homo_sapiens
+.GRCh38.dna.toplevel.fa.gz \
+        --input_file /opt/vep/.vep/input/coding_sorted$1\_IBD.vcf \
+        --output_file /opt/vep/.vep/output/coding_annotated$1\_IBD.vcf \
+        --assembly GRCh38 \
+        --everything \
+        --check_existing \
+        --hgvsg \
+        --nearest symbol \
+        --mane_select \
+        --pick_allele \
+        --plugin AncestralAllele,$plugdir/AncestralAllele/homo_sapiens_ancestor_
+GRCh38.fa.gz \
+        --plugin Blosum62 \
+        --plugin CADD,$plugdir/CADD/whole_genome_SNVs.tsv.gz,$plugdir/CADD/gnomad.genomes.r3.0.indel.tsv.gz \
+        --plugin Carol \
+        --plugin Condel,$plugdir/Condel/config,b \
+        --plugin Conservation,$plugdir/Conservation/gerp_conservation_scores.homo_sapiens.GRCh38.bw \
+        --plugin dbNSFP,$plugdir/dbNSFP/dbNSFP4.3a_grch38.gz,ALL \
+        --plugin dbscSNV,$plugdir/dbscSNV/dbscSNV1.1_GRCh38.txt.gz \
+        --plugin DisGeNET,file=$plugdir/DisGeNET/all_variant_disease_pmid_associations_final.tsv.gz \
+        --plugin Downstream \
+        --plugin EVE,file=$plugdir/EVE/eve_merged.vcf.gz \
+        --plugin IntAct,mutation_file=$plugdir/IntAct/mutations.tsv,mapping_file=$plugdir/IntAct/mutation_gc_map.txt.gz \
+        --plugin LOEUF,file=$plugdir/LOEUF/loeuf_dataset_grch38.tsv.gz,match_by=gene \
+        --plugin LoFtool,$plugdir/LoFtool/LoFtool_scores.txt \
+        --plugin MaxEntScan,$plugdir/MaxEntScan/ \
+        --plugin mutfunc,db=$plugdir/mutfunc/mutfunc_data.db \
+        --plugin neXtProt \
+        --plugin NearestExonJB \
+        --plugin NMD \
+        --plugin pLI,$plugdir/pLI/pLI_values.txt \
+        --plugin PrimateAI,$plugdir/PrimateAI/PrimateAI_scores_v0.2_GRCh38_sorted.tsv.bgz \
+        --plugin ReferenceQuality,$plugdir/ReferenceQuality/sorted_GRCh38_quality_mergedfile.gff3.gz \
+        --plugin REVEL,$plugdir/REVEL/new_tabbed_revel_grch38.tsv.gz \
+        --plugin satMutMPRA,file=$plugdir/satMutMPRA/satMutMPRA_GRCh38_ALL.gz \
+        --plugin SpliceAI,snv=$plugdir/SpliceAI/spliceai_scores.raw.snv.hg38.vcf.gz,indel=$plugdir/SpliceAI/spliceai_scores.raw.indel.hg38.vcf.gz \
+        --plugin SpliceRegion \
+        --plugin TSSDistance \
+        --plugin UTRAnnotator,file=$plugdir/UTRAnnotator/uORF_5UTR_GRCh38_PUBLIC.txt
+}
+
+open_sem $N
+for i in ${all_chroms[@]}
+do
+        run_with_lock extensive_vep_anno $i
+done
+wait
+
+##### extract annotations #####
+cd vep_data/output
+conda activate seq-ann
+
+extract_coding_anno(){
+
+        INFILE=coding_annotated$1\_IBD.vcf
+        OUTFILE=coding_$1\_vep_IBD.tsv
+        OUTHEADER=coding_$1\_header_vep_IBD.tsv
+
+        sed -i "/^#/s/[()]//g" $INFILE
+        sed -i "/^#/s/-/_/g" $INFILE
+        sed -i "/^#/s/++/plus_plus/g" $INFILE
+
+        bgzip -@ 8 -c $INFILE > ${INFILE}.gz
+        tabix -p vcf ${INFILE}.gz
+
+        bcftools +split-vep ${INFILE}.gz \
+        -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\t%CSQ\n' \
+        -d \
+        -A tab \
+        -o $OUTFILE
+        bcftools +split-vep ${INFILE}.gz -l > $OUTHEADER
+}
+
+open_sem $N
+for i in ${all_chroms[@]}
+do
+        run_with_lock extract_coding_anno  $i
+done
+
+###### MSC, GDI and GOF-LOF annotations ######
+msc_gdi_goflof_anno(){
+python ../../../MSC_GDI_GoFLoF.py \
+  coding_$1\_vep_IBD.tsv \
+  coding_$1\_header_vep_IBD.tsv \
+  msc_gdi_goflof_coding_$1\_vep_IBD
+}
+
+open_sem $N
+for i in ${all_chroms[@]}
+do
+        run_with_lock msc_gdi_goflof_anno $i
+done
+wait
+
+##### prepare final files #####
+### file for all variants ####
+head -1  vep_annotatedchr1_IBD.tsv > header.tsv
+sed -i '1d' vep*
+cat header.tsv vep* > final_annotations_IBD.tsv
+bgzip final_annotations_IBD.tsv
+
+### file for coding variants ###
+head -1  msc_gdi_goflof_coding_chr1_vep_IBD.tsv > header_coding.tsv
+sed -i '1d' msc_gdi_goflof*
+cat header_coding.tsv msc_gdi_goflof* > final_annotations_coding_IBD.tsv
+bgzip final_annotations_coding_IBD.tsv
 
 conda deactivate
