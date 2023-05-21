@@ -6,9 +6,9 @@ datafile = sys.argv[1]
 headerfile = sys.argv[2]
 outfile = sys.argv[3]
 
-gdi_df = pd.read_csv("./GDI.csv")
-msc_df = pd.read_csv("./MSC_v1.6_95.txt", usecols=['Gene', 'MSC'], sep="\t")
-goflof_df = pd.read_csv("/sc/arion/scratch/karsm02/vep_plugin_resource/GOF_LOF/GoFLoF.tsv", sep="\t")
+gdi_df = pd.read_csv("/path/to/GDI/file/GDI.csv")
+msc_df = pd.read_csv("/path/to/MSC/file/MSC_v1.6_95.txt", usecols=['Gene', 'MSC'], sep="\t")
+goflof_df = pd.read_csv("/path/to/GoFLoF/file/GoFLoF.tsv", sep="\t")
 
 # read all column names of the vcf output
 csqheader = pd.read_csv(headerfile, header=None, names=[
