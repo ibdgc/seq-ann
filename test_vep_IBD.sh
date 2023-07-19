@@ -57,7 +57,6 @@ conda deactivate
 cd ../../
 
 ###### VEP annotation ######
-ml singularity/3.6.4
 plugdir=/path/to/plugin/data
 
 vep_anno(){
