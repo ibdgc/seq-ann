@@ -51,7 +51,7 @@ singularity pull --name vep_109.sif docker://ensemblorg/ensembl-vep:release_109.
 
 mkdir vep_data
 
-##The cache has already been downloaded on Minerva, so I skipped the next command, instead I copied the cache (homo_sapiens folder) and fasta file(s) to /local/ece/anno/vep_data
+##The cache has already been downloaded on Minerva but other users might need to run the following command to install cache from scratch
 #singularity exec vep.sif INSTALL.pl -c /local/ece/anno/vep_data -a cf -s homo_sapiens -y GRCh38
 
 ##Create two folders for input and output files
