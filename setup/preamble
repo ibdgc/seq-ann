@@ -46,13 +46,12 @@ fi
 mkdir ../anno
 cd ../anno
 
-ml singularity/3.6.4
 singularity pull --name vep_109.sif docker://ensemblorg/ensembl-vep:release_109.3
 
 mkdir vep_data
 
-##The cache has already been downloaded on Minerva but other users might need to run the following command to install cache from scratch
-#singularity exec vep.sif INSTALL.pl -c /local/ece/anno/vep_data -a cf -s homo_sapiens -y GRCh38
+##The cache has already been downloaded on Minerva but other users might need to run the following command to install the cache from scratch
+#singularity exec vep.sif INSTALL.pl -c ./vep_data -a cf -s homo_sapiens -y GRCh38
 
 ##Create two folders for input and output files
 mkdir vep_data/input

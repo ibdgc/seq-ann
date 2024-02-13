@@ -5,10 +5,15 @@ import os
 datafile = sys.argv[1]
 headerfile = sys.argv[2]
 outfile = sys.argv[3]
+plugdir = sys.argv[4]
 
-gdi_df = pd.read_csv("/path/to/GDI/file/GDI.csv")
-msc_df = pd.read_csv("/path/to/MSC/file/MSC_v1.6_95.txt", usecols=['Gene', 'MSC'], sep="\t")
-goflof_df = pd.read_csv("/path/to/GoFLoF/file/GoFLoF.tsv", sep="\t")
+fn_gdi = os.path.join(plugdir, 'GDI/GDI.csv')
+fn_msc = os.path.join(plugdir, 'MSC/MSC_v1.6_95.txt')
+fn_goflof = os.path.join(plugdir, 'GOF_LOF/GoFLoF.tsv')
+
+gdi_df = pd.read_csv(fn_gdi)
+msc_df = pd.read_csv(fn_msc, usecols=['Gene', 'MSC'], sep="\t")
+goflof_df = pd.read_csv(fn_goflof, sep="\t")
 
 # read all column names of the vcf output
 csqheader = pd.read_csv(headerfile, header=None, names=[
